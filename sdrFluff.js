@@ -4,6 +4,7 @@ var Fluffy = Fluffy || {}; // setup namespace
 Fluffy.SDR = function() // setup module 
 {
     // private stuff
+
     var symbolTime = 0.032; // 0.032;
     var transitionTime = 0.008; // 0.008;
     var frequency = 1100; // 1100
@@ -21,6 +22,7 @@ Fluffy.SDR = function() // setup module
     }
 
     // public stuff
+
     var init = function()
     {
         if ( hasGetUserMedia() ) 
@@ -107,5 +109,5 @@ Fluffy.SDR = function() // setup module
 }();
 
 Fluffy.SDR.init();
-Fluffy.SDR.playTones();
+
 
