@@ -45,24 +45,7 @@
 <script src="dsp.js"></script>
 <script src="sdrFluff.js"></script>
 
-<script>
-  $(function() {
-    $( "#slider-range" ).slider({
-      range: true,
-      min: 0,
-      max: 2000,
-      values: [ 0, 500 ],
-      slide: function( event, ui ) {
-       console.log( ui.values );
-var startTime = ui.values[0] / 1000.0 ;
-var timeRange = (ui.values[1] - ui.values[0]) / 1000.0;
-Fluffy.SDR.draw(startTime,timeRange);
-      }
-    });
-   
-  });
-</script>
-
+<script src="gui.js"></script>
 
 </body>
 </html>
