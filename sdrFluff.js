@@ -12,6 +12,10 @@ Fluffy.SDR = function() // setup module
     var audioContext;
     var osc;
     var gain;
+    var microphone;
+    var processor;
+
+    var audioBufferSize = 2048; // must be power of 2 
 
     function hasGetUserMedia() 
     {
@@ -20,6 +24,50 @@ Fluffy.SDR = function() // setup module
                   || navigator.webkitGetUserMedia 
                   || navigator.msGetUserMedia);
     }
+
+
+    function gumStream(stream)
+    {
+        console.log("Got GUM steram");
+        
+        microphone = audioContext.createMediaStreamSource(stream);
+        processor = audioContext.createScriptProcessor( audioBufferSize, 2, 2 );
+        processor.onaudioprocess = processAudio;
+        
+        microphone.connect(processor);
+        processor.connect(audioContext.destination);
+    }
+
+
+    function gumError(err)
+    {
+        console.log("The following GUM error occured: " + err);
+    }
+
+
+    function processAudio(e) 
+    {
+        //console.log( "In processAudio");
+        var lIn = e.inputBuffer.getChannelData(0);
+        var rIn = e.inputBuffer.getChannelData(1);
+        var lOut = e.outputBuffer.getChannelData(0);
+        var rOut = e.outputBuffer.getChannelData(1);
+        
+        if ( lIn.length > audioBufferSize )
+        {
+            alert("something bad happended");
+        }
+        
+        for (var i = 0; i < lIn.length; i++) 
+        {
+        }
+    
+        for (var i = 0; i < lOut.length; i++) {
+            lOut[i] = 0.0;
+            rOut[i] = 0.0;
+        }
+    }
+
 
     // public stuff
 
@@ -62,6 +110,8 @@ Fluffy.SDR = function() // setup module
         gain.connect( audioContext.destination );
         
         osc.start( 0 );
+
+        navigator.getUserMedia( {audio: true} , gumStream, gumError );
     };
 
     function playTones()
