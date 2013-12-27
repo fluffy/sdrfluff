@@ -17,6 +17,12 @@ Fluffy.SDR = function() // setup module
 
     var audioBufferSize = 2048; // must be power of 2 
 
+    var bufSize = 8 * 48000 * 2.000; // 8 byte sammples * samplerate * time seconds  
+    var bufIn;
+    var bufOut;
+    var bufLoc = 0;
+
+
     function hasGetUserMedia() 
     {
         return !!(navigator.getUserMedia
@@ -60,6 +66,15 @@ Fluffy.SDR = function() // setup module
         
         for (var i = 0; i < lIn.length; i++) 
         {
+            Module.setValue( bufIn+bufLoc, lIn[i], 'double' ); bufLoc += 8;
+        
+            if ( bufLoc+8 >= bufSize )
+            {
+                var e = doSoundProcess( audioContext.sampleRate, bufLoc/8, bufIn, 
+                                    symbolTime, transitionTime, frequency,
+                                    bufOut );
+                bufLoc = 0;
+            }
         }
     
         for (var i = 0; i < lOut.length; i++) 
@@ -68,6 +83,8 @@ Fluffy.SDR = function() // setup module
             rOut[i] = 0.0;
         }
     }
+
+    doSoundProcess = Module.cwrap( 'soundProcess', 'number', ['number','number','buf','number','number','number','buf'] )
 
 
     // public stuff
@@ -113,6 +130,10 @@ Fluffy.SDR = function() // setup module
         osc.start( 0 );
 
         navigator.getUserMedia( {audio: true} , gumStream, gumError );
+
+        bufIn  = Module._malloc( bufSize );
+        bufOut = Module._malloc( bufSize );
+
     };
 
     function playTones()

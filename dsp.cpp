@@ -16,6 +16,8 @@ int soundProcess( int sampleRate, int numSamples, double* samples,
       refSig[i] = samples[i] * 0.5;
    }
 
+   printf("samp zero = %lf \n",samples[0] );
+   
    return 0;
 }
 
