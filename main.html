@@ -9,6 +9,9 @@
 <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap-theme.min.css">
 
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+
+
 </head>
 <body>
 
@@ -18,6 +21,9 @@
 
 <div class="container">
   <canvas id="canvasWavform"></canvas>
+
+  <div id="slider-range"></div>
+  
 </div> <!-- container -->
 
 <div class="container">
@@ -30,11 +36,33 @@
 </div> <!-- container -->
 
 
-<script src="https://code.jquery.com/jquery.js"></script>
+
+<script src="https://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="https://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
 <script src="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
 
 <script src="dsp.js"></script>
 <script src="sdrFluff.js"></script>
+
+<script>
+  $(function() {
+    $( "#slider-range" ).slider({
+      range: true,
+      min: 0,
+      max: 2000,
+      values: [ 0, 500 ],
+      slide: function( event, ui ) {
+       console.log( ui.values );
+var startTime = ui.values[0] / 1000.0 ;
+var timeRange = (ui.values[1] - ui.values[0]) / 1000.0;
+Fluffy.SDR.draw(startTime,timeRange);
+      }
+    });
+   
+  });
+</script>
+
 
 </body>
 </html>

@@ -22,6 +22,8 @@ Fluffy.SDR = function() // setup module
     var bufOut;
     var bufLoc = 0;
 
+    var oldStartTime = 0.0;
+    var oldTimeRange = 0.5;
 
     function hasGetUserMedia() 
     {
@@ -34,7 +36,7 @@ Fluffy.SDR = function() // setup module
 
     function gumStream(stream)
     {
-        console.log("Got GUM steram");
+        console.log("Got GUM stream");
         
         microphone = audioContext.createMediaStreamSource(stream);
         processor = audioContext.createScriptProcessor( audioBufferSize, 2, 2 );
@@ -74,6 +76,7 @@ Fluffy.SDR = function() // setup module
                                     symbolTime, transitionTime, frequency,
                                     bufOut );
                 bufLoc = 0;
+                draw( oldStartTime, oldTimeRange );
             }
         }
     
@@ -86,10 +89,63 @@ Fluffy.SDR = function() // setup module
 
     doSoundProcess = Module.cwrap( 'soundProcess', 'number', ['number','number','buf','number','number','number','buf'] )
 
-
+    
     // public stuff
 
-    var init = function()
+
+    function draw( startTime, timeRange )
+    {
+        oldStartTime = startTime;
+        oldTimeRange = timeRange;
+
+        var canvas = document.getElementById('canvasWavform');
+        var drawContext = canvas.getContext('2d');
+        drawContext.setTransform( 1, 0, 0, 1, 0, 0 );
+        drawContext.clearRect( 0,0, drawContext.canvas.width, drawContext.canvas.height );
+                
+        for ( var line=0; line < 2 ; line++ )
+        {
+            drawContext.beginPath();
+            drawContext.strokeStyle = '#0000FF'; // blue
+            if ( line === 1 )
+            {
+                drawContext.strokeStyle = '#FF0000'; // red
+            }
+            drawContext.moveTo( 0, drawContext.canvas.height / 2 );
+            for( var col = 0; col < drawContext.canvas.width; col++ )
+            {
+                var t0 = (startTime + (col/drawContext.canvas.width)*timeRange) ;  // time in seconds 
+                var t1 = (startTime + ((col+1)/drawContext.canvas.width)*timeRange) ;  // time in seconds 
+                
+                if ( t1 > 2.0 ) 
+                {
+                    break;
+                }
+                
+                var i0 = Math.round( t0 * audioContext.sampleRate );
+                var i1 = Math.round( t1 * audioContext.sampleRate);
+                
+                for ( var i = i0 ; i < i1 ; i++ )
+                {
+                    var y=0.0;
+                    if ( line == 0 ) 
+                    {
+                        y = Module.getValue( bufOut + i*8 , 'double' );
+                    }
+                    if ( line == 1 ) 
+                    {
+                        y = Module.getValue( bufIn + i*8 , 'double' );
+                    }
+                    var row = drawContext.canvas.height/2 - y * drawContext.canvas.height/2;
+                    drawContext.lineTo( col, row );
+                }
+            }
+            drawContext.stroke();
+        }
+    }
+
+
+     var init = function()
     {
         if ( hasGetUserMedia() ) 
         {
@@ -173,6 +229,7 @@ Fluffy.SDR = function() // setup module
 
     var publicExport =
         {
+            draw: draw,
             playTones: playTones,
             init: init
         };
