@@ -19,3 +19,7 @@
 cert.pem
 privkey.pem
 
+# generated files
+dsp.js
+testDsp
+

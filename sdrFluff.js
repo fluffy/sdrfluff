@@ -62,7 +62,8 @@ Fluffy.SDR = function() // setup module
         {
         }
     
-        for (var i = 0; i < lOut.length; i++) {
+        for (var i = 0; i < lOut.length; i++) 
+        {
             lOut[i] = 0.0;
             rOut[i] = 0.0;
         }
