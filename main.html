@@ -27,10 +27,21 @@
 
 <div class="container">
 
-  <button id="buttonRX" type="button" class="btn btn-default" data-toggle="button" >RX</button>
+<!-- Single button -->
+<div id="rxMenu" class="btn-group">
+  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+    RX <span class="caret"></span>
+  </button>
+  <ul class="dropdown-menu" role="menu">
+    <li><a href="#run">Run</a></li>
+    <li><a href="#once">Once</a></li>
+    <li><a href="#stop">Stop</a></li>
+
+  </ul>
+</div>
 
   <button id="buttonTX" type="button" class="btn btn-default"
-  data-toggle="button" onclick="Fluffy.SDR.playTones()" >TX</button>
+  data-toggle="button" onclick="txButtonClick()" >TX</button>
   
 </div> <!-- container -->
 

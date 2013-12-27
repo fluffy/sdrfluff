@@ -12,3 +12,17 @@ $(function() {
         }
     });
 });
+
+function rxButtonClick()
+{
+}
+
+function txButtonClick()
+{
+    Fluffy.SDR.playTones();
+}
+
+$(".dropdown-menu li a").click(function()
+{
+    Fluffy.SDR.runMode( $(this).text() );
+});

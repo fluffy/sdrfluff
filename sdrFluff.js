@@ -25,6 +25,8 @@ Fluffy.SDR = function() // setup module
     var oldStartTime = 0.0;
     var oldTimeRange = 0.5;
 
+    var privRunMode = "once";
+
     function hasGetUserMedia() 
     {
         return !!(navigator.getUserMedia
@@ -66,20 +68,32 @@ Fluffy.SDR = function() // setup module
             alert("something bad happended");
         }
         
-        for (var i = 0; i < lIn.length; i++) 
+        if ( privRunMode !== "stop" )
         {
-            Module.setValue( bufIn+bufLoc, lIn[i], 'double' ); bufLoc += 8;
-        
-            if ( bufLoc+8 >= bufSize )
+            for (var i = 0; i < lIn.length; i++) 
             {
-                var e = doSoundProcess( audioContext.sampleRate, bufLoc/8, bufIn, 
-                                    symbolTime, transitionTime, frequency,
-                                    bufOut );
-                bufLoc = 0;
-                draw( oldStartTime, oldTimeRange );
+                Module.setValue( bufIn+bufLoc, lIn[i], 'double' ); bufLoc += 8;
+                
+                if ( bufLoc+8 >= bufSize )
+                {
+                    var e = doSoundProcess( audioContext.sampleRate, bufLoc/8, bufIn, 
+                                            symbolTime, transitionTime, frequency,
+                                            bufOut );
+                    bufLoc = 0;
+
+                    if ( e === 0 )
+                    {
+                        draw( oldStartTime, oldTimeRange );
+                        if ( privRunMode === "once" )
+                        {
+                            console.log( "change runMode from once to stop" );
+                            privRunMode = "stop";
+                        }
+                    }
+                }
             }
         }
-    
+
         for (var i = 0; i < lOut.length; i++) 
         {
             lOut[i] = 0.0;
@@ -145,7 +159,7 @@ Fluffy.SDR = function() // setup module
     }
 
 
-     var init = function()
+    var init = function()
     {
         if ( hasGetUserMedia() ) 
         {
@@ -192,6 +206,7 @@ Fluffy.SDR = function() // setup module
 
     };
 
+
     function playTones()
     {
         var time = audioContext.currentTime;
@@ -227,9 +242,19 @@ Fluffy.SDR = function() // setup module
         }
     }
 
+
+    function runMode( mode )
+    {
+        mode = mode.toLowerCase();
+        console.log( "runMode = " + mode );
+        privRunMode = mode;
+    }
+
+
     var publicExport =
         {
             draw: draw,
+            runMode: runMode,
             playTones: playTones,
             init: init
         };
