@@ -14,3 +14,8 @@
 
 # editor crap
 *~
+
+# openssl credentails
+cert.pem
+privkey.pem
+
