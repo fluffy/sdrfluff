@@ -165,7 +165,9 @@ int soundProcess( int sampleRate, int numSamples, double* samples,
                   double* refSig,
                   int32_t result[], int maxResult )
 {
-   int numSymbols = 4 + 32 + 6; // 16 TODO 
+   int numSymbols = 4 /*start bits*/ + 48 /*data*/ + 8 /* checksum */ + 6 /*hamming*/ ; // 16 TODO 
+   //int numSymbols = 4 /*start bits*/ + 32 /*data*/ + 8 /* checksum */ + 6 /*hamming*/ ; // 16 TODO 
+
    char patern[] = "pnpp"; // must match start bits in bitArray in sdrFluff.js TODO
    int paternLen = 4;
 
@@ -206,7 +208,7 @@ int soundProcess( int sampleRate, int numSamples, double* samples,
    {
       snr = 10.0 * log10( max / min );
    }
-   printf("SNR = %lf dB  max = %lf \n", snr , 10.0 * log10( max  ) );
+   //printf("SNR = %lf dB  max = %lf \n", snr , 10.0 * log10( max  ) );
 
    if ( snr < squelchSNR )
    {
@@ -290,6 +292,21 @@ int soundProcess( int sampleRate, int numSamples, double* samples,
       case 32+6:
          numHamBits = 32;
          break;
+      case 40+6:
+         numHamBits = 40;
+         break;
+      case 48+6:
+         numHamBits = 48;
+         break;
+      case 56+6:
+         numHamBits = 56;
+         break;
+      case 64+7:
+         numHamBits = 64;
+         break;
+      case 72+7:
+         numHamBits = 72;
+         break;
       default:
          printf( "Need to implement num bits for hamming input %d \n", numSymbols-4  );
          assert(0);
@@ -299,7 +316,7 @@ int soundProcess( int sampleRate, int numSamples, double* samples,
    int32_t hamBits[numHamBits];
    int err = hammingDecode( &(rawBits[4]), numSymbols-4, hamBits, numHamBits );
    
-   printf( "revcd bits = " );
+   //printf( "revcd bits = " );
    int c=0;
    for (int i=0; i<numHamBits ; i++ )
    {
@@ -308,7 +325,7 @@ int soundProcess( int sampleRate, int numSamples, double* samples,
          c=0;
       }
       
-      printf( "%d ", hamBits[i]  );
+      //printf( "%d ", hamBits[i]  );
       
       if ( hamBits[i] != 0 )
       {
@@ -322,8 +339,21 @@ int soundProcess( int sampleRate, int numSamples, double* samples,
          printf(" [%d] ", result[i/8] );
       }
    }
-   printf("\n");
+   //printf("\n");
 
+   int sum=0;
+   for ( int i=0; i< (numHamBits-1)/8; i++ )
+   {
+      sum += result[i];
+   }
+   sum = sum & 0xF;
+   printf( "sum = %d, csum=%d \n", sum, result[(numHamBits-1)/8] );
+   
+   if ( sum != result[(numHamBits-1)/8] )
+   {
+      return 4; // TODO - renormalize error return codes 
+   }
+   
    if (err != 0)
    {
       //printf("return doSound parity error\n");

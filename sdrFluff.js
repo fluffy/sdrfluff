@@ -1,6 +1,18 @@
 
 var Fluffy = Fluffy || {}; // setup namespace
 
+//TODO  - move
+function myTimeMS() {
+    if ( window.performance )
+    {
+        return window.performance.now()
+    }
+    else
+    {
+        return new Date().getTime();
+    }
+}
+
 Fluffy.SDR = function() // setup module 
 {
     // private stuff
@@ -8,7 +20,7 @@ Fluffy.SDR = function() // setup module
     var symbolTime = 0.0032; // 0.032;
     var transitionTime = 0.0008; // 0.008;
     var frequency = 18000; // 1100
-    var squelchSNR = 25.0; // 25 
+    var squelchSNR = 0.0; // 25 
 
     var audioContext;
     var osc;
@@ -18,7 +30,7 @@ Fluffy.SDR = function() // setup module
 
     var audioBufferSize = 2048; // must be power of 2 
 
-    var bufSize = 8 * 48000 * 0.500; // 8 byte sammples * samplerate * time seconds  
+    var bufSize = 8 * 48000 * 0.600; // 8 byte samples * samplerate * time seconds  
     var bufIn;
     var bufOut;
     var bufLoc = 0;
@@ -28,10 +40,12 @@ Fluffy.SDR = function() // setup module
 
     var privRunMode = "once";
 
+    var lastComputeTime;
+
     function hasGetUserMedia() 
     {
         return !!(navigator.getUserMedia
-                  || navigator.mozGetUserMedia 
+                  || navigator.mozGetUserMedia
                   || navigator.webkitGetUserMedia 
                   || navigator.msGetUserMedia);
     }
@@ -77,15 +91,28 @@ Fluffy.SDR = function() // setup module
                 
                 if ( bufLoc+8 >= bufSize )
                 {
-                    var foundSymMax = 4;
+                    var foundSymMax = 9;
                     var foundSyms = Module._malloc( 4 * foundSymMax );
 
-                    for ( var f = 17000.0; f <= 21000.0 ; f += 1000.0 ) // TODO - make paramters 
+                    var now = myTimeMS();
+                    console.log( "Cycle time is " + (now-lastComputeTime) + " ms" );
+                    lastComputeTime = now;
+
+                    for ( var f = 17100.0; f <= 18100.0 ; f += 500.0 ) // TODO - make paramters 
                     {
-                    var e = doSoundProcess( audioContext.sampleRate, bufLoc/8, bufIn, 
-                                            symbolTime, transitionTime, f, squelchSNR,
-                                            bufOut, 
+                        var start = myTimeMS();
+                        var e = -1;
+                        if ( true )
+                        {
+                            e = doSoundProcess( audioContext.sampleRate, bufLoc/8, bufIn, 
+                                                symbolTime, transitionTime, f, squelchSNR,
+                                                bufOut, 
                                             foundSyms, foundSymMax );
+                        }
+                        var end= myTimeMS();
+
+                        console.log( "    Run time is " + (end-start) + " ms" );
+
                     if ( e === 0 )
                     {
                         var str = "";
@@ -219,7 +246,7 @@ Fluffy.SDR = function() // setup module
         } 
         else 
         {
-            alert('Browser does not support getUserMedia. Try FireFox or Chrome');
+            alert('Browser does not support working getUserMedia. Try Chrome'); // TODO - fix for FF when bug fixed
         }
 
         var contextClass = window.AudioContext 
@@ -233,7 +260,7 @@ Fluffy.SDR = function() // setup module
         } 
         else
         {
-            alert('Browser does not support webAudio. Try Firefox or Chrome');
+            alert('Browser does not support working webAudio. Try  Chrome'); // TODO - fix for FF when bug fixed
         }
     };
 
@@ -279,14 +306,20 @@ Fluffy.SDR = function() // setup module
         var phase = 1
         var volume = 0.8;
         
-        // first bit is start bit and should be a 1 
- 
         var str = String( data );
-
-
-        //console.log( "c=" + c );
-
        
+        // TODO - move all this encoding to dsp.cpp file 
+
+        // add the checksum 
+        var sum = 0;
+        for ( var j=0; j< str.length; j++ )
+        {
+            sum += str.charCodeAt(j);
+        }
+        sum = sum & 0xF;
+        console.log( "check sum is " + sum );
+        str += String.fromCharCode( sum );
+
         var rawBits = [];
         for ( var j=0; j< str.length; j++ )
         {
@@ -315,13 +348,28 @@ Fluffy.SDR = function() // setup module
         case 32:
             numHamBits = 32+6;
             break;
+        case 40:
+            numHamBits = 40+6;
+            break;
+        case 48:
+            numHamBits = 48+6;
+            break;
+        case 56:
+            numHamBits = 56+6;
+            break;
+        case 64:
+            numHamBits = 64+7;
+            break;
+        case 72:
+            numHamBits = 72+7;
+            break;
         default:
             console.log( "Need to implement playTone of " + rawBits.length + " bits" );
             assert(0);
             return;
         }
 
-        rawBits.length
+        //console.log( " num raw bits = " + rawBits.length + " , num ham bits = " + numHamBits );
 
         rawPtr = Module._malloc( rawBits.length * 4);
         hamPtr = Module._malloc( numHamBits * 4);
@@ -342,6 +390,7 @@ Fluffy.SDR = function() // setup module
 
 
         // TODO - move up and push on to hamBits
+        // first bit is start bit and should be a 1 
         var bitArray = [1,0,0,1]; // start bit sequence - must match pattern in dsp.cpp TODO
         bitArray = bitArray.concat( hamBits );
 
