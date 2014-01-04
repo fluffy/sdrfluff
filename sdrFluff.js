@@ -1,22 +1,33 @@
-var Fluffy = Fluffy || {}; // setup namespace
+/*jslint browser: true, vars: true, todo: true, plusplus: true, nomen: true, bitwise: true */
+/*global  $*/
+/*global  Module*/
+/*global  assert*/
+/*global  alert*/
+/*global receivedData*/ // TODO - need to pass in 
+// /*jslint white: true*/
+
+"use strict";
+
+var Fluffy;
+Fluffy = Fluffy || {}; // setup namespace
 
 //TODO  - move
 function myTimeMS() {
     if (window.performance) {
-        return window.performance.now()
-    } else {
-        return new Date().getTime();
+        return window.performance.now();
     }
+    return new Date().getTime();
 }
 
-Fluffy.SDR = function () // setup module 
-{
-    // private stuff
+// setup module 
+Fluffy.SDR = (function () {
 
     var symbolTime = 0.0032; // 0.032;
     var transitionTime = 0.0008; // 0.008;
     var frequency = 18000; // 1100
     var squelchSNR = 0.0; // 25 
+
+    var overlapAudioWindows = false;
 
     var audioContext;
     var osc;
@@ -44,67 +55,130 @@ Fluffy.SDR = function () // setup module
             || navigator.webkitGetUserMedia || navigator.msGetUserMedia);
     }
 
+    var doSoundProcess = Module.cwrap('soundProcess', 'number', ['number', 'number', 'buf', 'number', 'number', 'number', 'number', 'buf', 'buf', 'number']);
 
-    function gumStream(stream) {
-        console.log("Got GUM stream");
 
-        microphone = audioContext.createMediaStreamSource(stream);
-        processor = audioContext.createScriptProcessor(audioBufferSize, 2, 2);
-        processor.onaudioprocess = processAudio;
+    var doHammingEncode = Module.cwrap('hammingEncode', 'number', ['buf', 'number', 'buf', 'number']);
 
-        microphone.connect(processor);
-        processor.connect(audioContext.destination);
+
+    function draw(startTime, timeRange) {
+        var canvas;
+        var drawContext;
+        var line;
+        var col;
+        var t0;
+        var t1;
+        var i0;
+        var i1;
+        var i;
+        var y;
+        var row;
+
+        oldStartTime = startTime;
+        oldTimeRange = timeRange;
+
+        canvas = document.getElementById('canvasWavform');
+
+        if (!canvas) {
+            return;
+        }
+
+        drawContext = canvas.getContext('2d');
+        drawContext.setTransform(1, 0, 0, 1, 0, 0);
+        drawContext.clearRect(0, 0, drawContext.canvas.width, drawContext.canvas.height);
+
+        for (line = 0; line < 2; line++) {
+            drawContext.beginPath();
+            drawContext.strokeStyle = '#0000FF'; // blue
+            if (line === 1) {
+                drawContext.strokeStyle = '#FF0000'; // red
+            }
+            drawContext.moveTo(0, drawContext.canvas.height / 2);
+            for (col = 0; col < drawContext.canvas.width; col++) {
+                t0 = (startTime + (col / drawContext.canvas.width) * timeRange); // time in seconds 
+                t1 = (startTime + ((col + 1) / drawContext.canvas.width) * timeRange); // time in seconds 
+
+                if (t1 > 2.0) {
+                    break;
+                }
+
+                i0 = Math.round(t0 * audioContext.sampleRate);
+                i1 = Math.round(t1 * audioContext.sampleRate);
+
+                for (i = i0; i < i1; i++) {
+                    y = 0.0;
+                    if (line === 0) {
+                        y = Module.getValue(bufOut + i * 8, 'double');
+                    }
+                    if (line === 1) {
+                        y = Module.getValue(bufIn + i * 8, 'double');
+                    }
+                    row = drawContext.canvas.height / 2 - y * drawContext.canvas.height / 2;
+                    drawContext.lineTo(col, row);
+                }
+            }
+            drawContext.stroke();
+        }
     }
 
 
-    function gumError(err) {
-        console.log("The following GUM error occured: " + err);
-    }
-
-
-    function processAudio(e) {
+    function processAudio(event) {
         //console.log( "In processAudio");
-        var lIn = e.inputBuffer.getChannelData(0);
-        var rIn = e.inputBuffer.getChannelData(1);
-        var lOut = e.outputBuffer.getChannelData(0);
-        var rOut = e.outputBuffer.getChannelData(1);
+        var lIn = event.inputBuffer.getChannelData(0);
+        //var rIn = event.inputBuffer.getChannelData(1);
+        var lOut = event.outputBuffer.getChannelData(0);
+        var rOut = event.outputBuffer.getChannelData(1);
+        var i;
+        var f;
+        var foundSymMax;
+        var foundSyms;
+        var now;
+        var start;
+        var e;
+        var end;
+        var fSym;
+        var c;
+        var slideLen;
+        var j;
+        var v;
+        var str;
 
         if (lIn.length > audioBufferSize) {
+            assert(0);
             alert("something bad happended");
         }
 
         if (privRunMode !== "stop") {
-            for (var i = 0; i < lIn.length; i++) {
+            for (i = 0; i < lIn.length; i++) {
                 Module.setValue(bufIn + bufLoc, lIn[i], 'double');
                 bufLoc += 8;
 
                 if (bufLoc + 8 >= bufSize) {
-                    var foundSymMax = 9;
-                    var foundSyms = Module._malloc(4 * foundSymMax);
+                    foundSymMax = 9;
+                    foundSyms = Module._malloc(4 * foundSymMax);
 
-                    var now = myTimeMS();
+                    now = myTimeMS();
                     console.log("Cycle time is " + (now - lastComputeTime) + " ms");
                     lastComputeTime = now;
 
-                    for (var f = 17100.0; f <= 18100.0; f += 500.0) // TODO - make paramters 
-                    {
-                        var start = myTimeMS();
-                        var e = -1;
-                        if (true) {
-                            e = doSoundProcess(audioContext.sampleRate, bufLoc / 8, bufIn,
-                                symbolTime, transitionTime, f, squelchSNR,
-                                bufOut,
-                                foundSyms, foundSymMax);
-                        }
-                        var end = myTimeMS();
+                    // TODO - make paramters 
+                    for (f = 17100.0; f <= 18100.0; f += 500.0) {
+                        start = myTimeMS();
+
+                        e = doSoundProcess(audioContext.sampleRate, bufLoc / 8, bufIn,
+                                           symbolTime, transitionTime, f, squelchSNR,
+                                           bufOut,
+                                           foundSyms, foundSymMax);
+
+                        end = myTimeMS();
 
                         console.log("    Run time is " + (end - start) + " ms");
 
                         if (e === 0) {
-                            var str = "";
+                            str = "";
 
-                            for (var fSym = 0; fSym < foundSymMax; fSym++) {
-                                var c = Module.getValue(foundSyms + fSym * 4, 'i32');
+                            for (fSym = 0; fSym < foundSymMax; fSym++) {
+                                c = Module.getValue(foundSyms + fSym * 4, 'i32');
                                 if (c !== -1) {
                                     str += String.fromCharCode(c);
                                 }
@@ -123,11 +197,11 @@ Fluffy.SDR = function () // setup module
                         }
                     }
 
-                    if (true) // slide the last 75 ms of buffer to start and contiue copying
-                    {
-                        var slideLen = 0.075 * audioContext.sampleRate;
-                        for (var j = 0; j < slideLen; j++) {
-                            var v = Module.getValue(bufLoc - j * 8, 'double');
+                    // slide the last 75 ms of buffer to start and contiue copying
+                    if (overlapAudioWindows) {
+                        slideLen = 0.075 * audioContext.sampleRate;
+                        for (j = 0; j < slideLen; j++) {
+                            v = Module.getValue(bufLoc - j * 8, 'double');
                             Module.setValue(bufIn + j * 8, v, 'double');
                             bufLoc += 8;
                         }
@@ -141,83 +215,43 @@ Fluffy.SDR = function () // setup module
             }
         }
 
-        for (var i = 0; i < lOut.length; i++) {
+        for (i = 0; i < lOut.length; i++) {
             lOut[i] = 0.0;
             rOut[i] = 0.0;
         }
     }
 
-    doSoundProcess = Module.cwrap('soundProcess', 'number', ['number', 'number', 'buf', 'number', 'number', 'number', 'number', 'buf', 'buf', 'number'])
+    function gumStream(stream) {
+        console.log("Got GUM stream");
+
+        microphone = audioContext.createMediaStreamSource(stream);
+        processor = audioContext.createScriptProcessor(audioBufferSize, 2, 2);
+        processor.onaudioprocess = processAudio;
+
+        microphone.connect(processor);
+        processor.connect(audioContext.destination);
+    }
 
 
-    doHammingEncode = Module.cwrap('hammingEncode', 'number', ['buf', 'number', 'buf', 'number'])
-
-    // public stuff
-
-
-    function draw(startTime, timeRange) {
-        oldStartTime = startTime;
-        oldTimeRange = timeRange;
-
-        var canvas = document.getElementById('canvasWavform');
-
-        if (!canvas) {
-            return;
-        }
-
-        var drawContext = canvas.getContext('2d');
-        drawContext.setTransform(1, 0, 0, 1, 0, 0);
-        drawContext.clearRect(0, 0, drawContext.canvas.width, drawContext.canvas.height);
-
-        for (var line = 0; line < 2; line++) {
-            drawContext.beginPath();
-            drawContext.strokeStyle = '#0000FF'; // blue
-            if (line === 1) {
-                drawContext.strokeStyle = '#FF0000'; // red
-            }
-            drawContext.moveTo(0, drawContext.canvas.height / 2);
-            for (var col = 0; col < drawContext.canvas.width; col++) {
-                var t0 = (startTime + (col / drawContext.canvas.width) * timeRange); // time in seconds 
-                var t1 = (startTime + ((col + 1) / drawContext.canvas.width) * timeRange); // time in seconds 
-
-                if (t1 > 2.0) {
-                    break;
-                }
-
-                var i0 = Math.round(t0 * audioContext.sampleRate);
-                var i1 = Math.round(t1 * audioContext.sampleRate);
-
-                for (var i = i0; i < i1; i++) {
-                    var y = 0.0;
-                    if (line == 0) {
-                        y = Module.getValue(bufOut + i * 8, 'double');
-                    }
-                    if (line == 1) {
-                        y = Module.getValue(bufIn + i * 8, 'double');
-                    }
-                    var row = drawContext.canvas.height / 2 - y * drawContext.canvas.height / 2;
-                    drawContext.lineTo(col, row);
-                }
-            }
-            drawContext.stroke();
-        }
+    function gumError(err) {
+        console.log("The following GUM error occured: " + err);
     }
 
 
     var init = function () {
         if (hasGetUserMedia()) {
             navigator.getUserMedia = navigator.getUserMedia
-            //   || navigator.mozGetUserMedia // TODO - put back in wehn FF when bug fixed
-            || navigator.webkitGetUserMedia || navigator.msGetUserMedia;
+            //  || navigator.mozGetUserMedia // TODO - put back in wehn FF when bug fixed
+                || navigator.webkitGetUserMedia || navigator.msGetUserMedia;
         } else {
             alert('Browser does not support working getUserMedia. Try Chrome'); // TODO - fix for FF when bug fixed
         }
 
-        var contextClass = window.AudioContext || window.webkitAudioContext
+        var ContextClass = window.AudioContext || window.webkitAudioContext
         //  || window.mozAudioContext // TODO put back in when FF when bug fixed
-        || window.oAudioContext || window.msAudioContext;
-        if (contextClass) {
-            audioContext = new contextClass();
+            || window.oAudioContext || window.msAudioContext;
+        if (ContextClass) {
+            audioContext = new ContextClass();
         } else {
             alert('Browser does not support working webAudio. Try  Chrome'); // TODO - fix for FF when bug fixed
         }
@@ -225,6 +259,9 @@ Fluffy.SDR = function () // setup module
 
 
     var initTx = function () {
+
+        console.log("Did initTx");
+
         osc = audioContext.createOscillator();
         osc.frequency.value = frequency;
         osc.type = 'sine';
@@ -232,13 +269,16 @@ Fluffy.SDR = function () // setup module
         gain = audioContext.createGain();
         gain.gain.value = 0.0;
 
-        osc.connect(gain)
+        osc.connect(gain);
         gain.connect(audioContext.destination);
 
         osc.start(0);
     };
 
     var initRx = function () {
+
+        console.log("Did initRx");
+
         navigator.getUserMedia({
             audio: true
         }, gumStream, gumError);
@@ -248,44 +288,61 @@ Fluffy.SDR = function () // setup module
     };
 
     function playTones(data, freq) {
+
+        console.log("PlayTone for " + data + " at " + freq);
+
+        var phase = 1.0;
+        var volume = 0.8;
+
+        var j;
+        var i;
+        var repeat;
+        var str;
+        var time;
+        var sum;
+        var rawBits = [];
+        var c;
+        var bit;
+        var numHamBits = 0;
+        var rawPtr;
+        var hamPtr;
+        var hamBits = [];
+        var bitArray = [];
+
         freq = freq || frequency;
 
         if (freq !== frequency) {
             frequency = freq;
         }
 
-        var time = audioContext.currentTime;
+        time = audioContext.currentTime;
 
+        gain.gain.setValueAtTime(0, time + 0.011); // TODO - move these to be 15 ms in ? 
+        osc.frequency.setValueAtTime(frequency, time + 0.013); // change freq with gain at zero
+        time += 0.015; // wait 15 ms to start 
         gain.gain.setValueAtTime(0, time);
-        osc.frequency.setValueAtTime(frequency, time);
 
-        var prevPhase = 1
-        var phase = 1
-        var volume = 0.8;
-
-        var str = String(data);
+        str = String(data);
 
         // TODO - move all this encoding to dsp.cpp file 
 
         // add the checksum 
-        var sum = 0;
-        for (var j = 0; j < str.length; j++) {
+        sum = 0;
+        for (j = 0; j < str.length; j++) {
             sum += str.charCodeAt(j);
         }
         sum = sum & 0xF;
         console.log("check sum is " + sum);
         str += String.fromCharCode(sum);
 
-        var rawBits = [];
-        for (var j = 0; j < str.length; j++) {
-            var c = str.charCodeAt(j);
-            for (var i = 0; i < 8; i++) {
-                var bit = (c & (1 << i)) ? 1 : 0;
+        for (j = 0; j < str.length; j++) {
+            c = str.charCodeAt(j);
+            for (i = 0; i < 8; i++) {
+                bit = (c & (1 << i)) ? 1 : 0;
                 rawBits.push(bit);
             }
         }
 
-        var numHamBits = 0;
         switch (rawBits.length) {
         case 4:
             numHamBits = 4 + 3;
@@ -333,7 +390,6 @@ Fluffy.SDR = function () // setup module
 
         doHammingEncode(rawPtr, rawBits.length, hamPtr, numHamBits);
 
-        var hamBits = [];
         for (i = 0; i < numHamBits; i++) {
             hamBits.push(Module.getValue(hamPtr + i * 4, 'i32'));
         }
@@ -343,21 +399,20 @@ Fluffy.SDR = function () // setup module
 
         // TODO - move up and push on to hamBits
         // first bit is start bit and should be a 1 
-        var bitArray = [1, 0, 0, 1]; // start bit sequence - must match pattern in dsp.cpp TODO
+        bitArray = [1, 0, 0, 1]; // start bit sequence - must match pattern in dsp.cpp TODO
         bitArray = bitArray.concat(hamBits);
 
         console.log("tx bits = " + bitArray);
 
-        time += 0.015; // wait 5 ms to start 
 
-        for (var repeat = 0; repeat < 2; repeat++) // TODO - paramterize 
-        {
+        // TODO - paramterize 
+        for (repeat = 0; repeat < 2; repeat++) {
+
             gain.gain.setValueAtTime(0, time);
-            for (var i = 0; i < bitArray.length; i++) {
-                var bit = bitArray[i];
-                if (bit == "0") {
+
+            for (i = 0; i < bitArray.length; i++) {
+                if (bitArray[i] === 0) {
                     phase = -phase;
-                    //console.log( "phase=" + phase );
                 }
 
                 gain.gain.linearRampToValueAtTime(volume * phase, time + transitionTime);
@@ -367,8 +422,9 @@ Fluffy.SDR = function () // setup module
 
                 time += symbolTime;
             }
+
             gain.gain.linearRampToValueAtTime(0.0, time);
-            time += 0.030; // repreat gap time time 
+            time += 0.025; // repeat time gap 
         }
     }
 
@@ -390,4 +446,4 @@ Fluffy.SDR = function () // setup module
     };
 
     return publicExport;
-}();
+}());

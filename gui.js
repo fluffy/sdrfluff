@@ -1,7 +1,12 @@
+/*jslint browser: true, vars: true, todo: true, unparam: true*/
+/*global  $*/
+/*global  Fluffy*/
+
+"use strict";
+
 Fluffy.SDR.init();
 Fluffy.SDR.initRx();
 Fluffy.SDR.initTx();
-
 
 $(function () {
     $("#slider-range").slider({
@@ -17,8 +22,6 @@ $(function () {
     });
 });
 
-function rxButtonClick() {}
-
 function txButtonClick() {
     Fluffy.SDR.playTones("ABCD");
 }
@@ -30,14 +33,6 @@ $(".dropdown-menu li a").click(function () {
 $("#sendDataText").change(function () {
     var send = $("#sendDataText");
     console.log("changed to " + send.val());
-
-    if (false) // local echo 
-    {
-        var recv = $("#recvDataText");
-        var str = recv.val();
-        str += "Me: " + send.val() + "\n";
-        recv.val(str);
-    }
 
     Fluffy.SDR.playTones(send.val());
 

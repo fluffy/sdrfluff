@@ -1,3 +1,9 @@
+/*jslint browser: true, vars: true, todo: true*/
+/*global  $*/
+/*global  Fluffy*/
+
+"use strict";
+
 Fluffy.SDR.init();
 Fluffy.SDR.initTx();
 
@@ -28,4 +34,4 @@ function transmit() {
 
 $("#sendDataText").val(Math.floor(Math.random() * 900000 + 100000));
 
-setInterval(transmit, 600 /* ms */ ); // TODO - needs match up with SRR record time
+setInterval(transmit, 600); //  TODO - needs match up with SRR record time

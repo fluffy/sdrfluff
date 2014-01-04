@@ -1,13 +1,18 @@
-var crypto = require('crypto'),
-    url = require("url"),
-    path = require("path"),
-    fs = require("fs"),
-    http = require("https"),
-    port = process.argv[2] || 4443;
+/*jslint node: true, vars: true, todo: true, stupid: true */
+/*global  fs*/
+
+"use strict";
+
+var crypto = require('crypto');
+var url = require("url");
+var path = require("path");
+var fs = require("fs");
+var http = require("https");
+var port = process.argv[2] || 4443;
 
 var handler = function (request, response) {
-    var uri = url.parse(request.url).pathname,
-        filename = path.join(process.cwd(), uri);
+    var uri = url.parse(request.url).pathname;
+    var filename = path.join(process.cwd(), uri);
 
     fs.exists(filename, function (exists) {
         if (!exists) {
@@ -19,7 +24,9 @@ var handler = function (request, response) {
             return;
         }
 
-        if (fs.statSync(filename).isDirectory()) filename += '/index.html';
+        if (fs.statSync(filename).isDirectory()) {
+            filename += '/index.html';
+        }
 
         fs.readFile(filename, "binary", function (err, file) {
             if (err) {

@@ -1,3 +1,9 @@
+/*jslint browser: true, vars: true, todo: true*/
+/*global  $*/
+/*global  Fluffy*/
+
+"use strict";
+
 Fluffy.SDR.init();
 Fluffy.SDR.initRx();
 Fluffy.SDR.runMode("run");

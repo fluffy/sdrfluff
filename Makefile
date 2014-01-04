@@ -14,7 +14,7 @@ testDsp: testDsp.cpp dsp.cpp dsp.h
 
 
 dsp.js: dsp.cpp
-	em++ -O1 dsp.cpp -o dsp.js -s EXPORTED_FUNCTIONS="['_soundProcess','_hammingEncode','_hammingDecode']"
+	em++ -O2 dsp.cpp -o dsp.js -s EXPORTED_FUNCTIONS="['_soundProcess','_hammingEncode','_hammingDecode']"
 
 
 pretty:
@@ -36,4 +36,13 @@ pretty:
 	mv recv.html.pretty recv.html
 	tidy --quiet y -utf8 --vertical-space y --tidy-mark n -indent -wrap 80 < main.html > main.html.pretty
 	mv main.html.pretty main.html
+
+lint:
+	jslint sdrFluff.js
+	jslint guiSend.js
+	jslint guiRecv.js
+	jslint gui.js
+	jslint node-serv.js
+
+
 
