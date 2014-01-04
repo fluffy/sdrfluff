@@ -165,10 +165,15 @@ int soundProcess( int sampleRate, int numSamples, double* samples,
                   double* refSig,
                   int32_t result[], int maxResult )
 {
-   int numSymbols = 16;
+   int numSymbols = 4 + 32 + 6; // 16 TODO 
    char patern[] = "pnpp"; // must match start bits in bitArray in sdrFluff.js TODO
    int paternLen = 4;
 
+   for ( int i=0; i<maxResult; i++ )
+   {
+      result[i] = -1;
+   }
+   
    if ( count == 0 )
    {
       printf( "In soundProcess %d Hz, %d Samples \n", sampleRate, numSamples );
@@ -266,28 +271,59 @@ int soundProcess( int sampleRate, int numSamples, double* samples,
    }
    //printf("\n\n");
    
-   assert( numSymbols == 16 );
-   int32_t hamBits[8];
-   int err = hammingDecode( &(rawBits[4]), 12, hamBits, 8 );
-   
-   //printf( "revcd bits = " );
-   int c=0;
-   for (int i=0; i<8; i++ )
+
+   int numHamBits=0;
+   switch ( numSymbols-4 ) // 4 is start bits TODO 
    {
-      // printf( "%d ", hamBits[i]  );
+      case 4+3:
+         numHamBits = 4;
+         break;
+      case 8+4:
+         numHamBits = 8;
+         break;
+      case 16+5:
+         numHamBits = 16;
+         break; 
+      case 24+5:
+         numHamBits = 24;
+         break; 
+      case 32+6:
+         numHamBits = 32;
+         break;
+      default:
+         printf( "Need to implement num bits for hamming input %d \n", numSymbols-4  );
+         assert(0);
+         return 3;
+   }
+   
+   int32_t hamBits[numHamBits];
+   int err = hammingDecode( &(rawBits[4]), numSymbols-4, hamBits, numHamBits );
+   
+   printf( "revcd bits = " );
+   int c=0;
+   for (int i=0; i<numHamBits ; i++ )
+   {
+      if ( (i%8) == 0 )
+      {
+         c=0;
+      }
+      
+      printf( "%d ", hamBits[i]  );
       
       if ( hamBits[i] != 0 )
       {
-         c += ( 1 << i );
+         c += ( 1 << (i%8) );
+      }
+
+      if ( (i%8) == 7 )
+      {
+         assert( i/8 < maxResult );
+         result[ i/8 ] = c;
+         printf(" [%d] ", result[i/8] );
       }
    }
-   //printf("\n");
-   
-   //printf("got char %d \n", c );
+   printf("\n");
 
-   assert( 0 < maxResult );
-   result[0] = c;
-   
    if (err != 0)
    {
       //printf("return doSound parity error\n");

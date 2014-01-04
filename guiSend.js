@@ -5,11 +5,11 @@ Fluffy.SDR.initTx();
 
 function getRandomFreq()
 {
-    var max = 21500.0;
-    var min = 16000.0;
-    var width = 500.0;
+    var max  = 21000.0;
+    var min  = 17000.0;
+    var width = 1000.0;
     
-    var ret = Math.random() * (max - min) + min;
+    var ret = Math.random() * (max + width - min) + min;
     ret = ret - ret%width;
 
     return ret;
@@ -19,7 +19,7 @@ function transmit()
 {
     var freq = getRandomFreq();
 
-    freq = 18000.0;
+    //freq = 18000.0;
 
     var val = $("#sendDataText").val(); 
 

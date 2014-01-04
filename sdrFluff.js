@@ -23,7 +23,7 @@ Fluffy.SDR = function() // setup module
     var bufOut;
     var bufLoc = 0;
 
-    var oldStartTime = 0.0;
+    var oldStartTime = 0.0; // TODO - rename 
     var oldTimeRange = 0.5;
 
     var privRunMode = "once";
@@ -77,21 +77,31 @@ Fluffy.SDR = function() // setup module
                 
                 if ( bufLoc+8 >= bufSize )
                 {
-                    var foundSymMax = 1;
+                    var foundSymMax = 4;
                     var foundSyms = Module._malloc( 4 * foundSymMax );
 
+                    for ( var f = 17000.0; f <= 21000.0 ; f += 1000.0 ) // TODO - make paramters 
+                    {
                     var e = doSoundProcess( audioContext.sampleRate, bufLoc/8, bufIn, 
-                                            symbolTime, transitionTime, frequency, squelchSNR,
+                                            symbolTime, transitionTime, f, squelchSNR,
                                             bufOut, 
                                             foundSyms, foundSymMax );
                     if ( e === 0 )
                     {
-                        var c =  Module.getValue( foundSyms + 0*4, 'i32' );
-                        var str = String.fromCharCode( c );
+                        var str = "";
 
-                        console.log( "MAIN SDR Found sym[0] = " + c + " (" + str + ")" );
+                        for ( var fSym=0; fSym < foundSymMax; fSym++ )
+                        {
+                            var c =  Module.getValue( foundSyms + fSym*4, 'i32' );
+                            if ( c !== -1 )
+                            {
+                                str += String.fromCharCode( c );
+                            }
+                        }
+
+                        console.log( "MAIN SDR: Got '" + str + "' at " + f +" Hz"  );
                         
-                        receivedData( str );
+                        receivedData( str + " " );
 
                         draw( oldStartTime, oldTimeRange );
 
@@ -100,6 +110,7 @@ Fluffy.SDR = function() // setup module
                             //console.log( "change runMode from once to stop" );
                             privRunMode = "stop";
                         }
+                    }
                     }
 
                     if ( true ) // slide the last 75 ms of buffer to start and contiue copying
@@ -271,48 +282,74 @@ Fluffy.SDR = function() // setup module
         // first bit is start bit and should be a 1 
  
         var str = String( data );
-        var c = str.charCodeAt(0);
+
 
         //console.log( "c=" + c );
 
-        var i=0;
+       
         var rawBits = [];
-        for(  i=0; i<8; i++ )
+        for ( var j=0; j< str.length; j++ )
         {
-            rawBits[i] = ( c & (1<<i) ) ? 1 : 0 ; 
-        }
-        var hamBits = [];
-        for(  i=0; i<12; i++ )
-        {
-            hamBits[i] = 0;
+            var c = str.charCodeAt(j);
+            for( var i=0; i<8; i++ )
+            {
+                var bit = ( c & (1<<i) ) ? 1 : 0;
+                rawBits.push( bit ); 
+            }
         }
 
-        rawPtr = Module._malloc( 8 * 4);
-        hamPtr = Module._malloc( 12 * 4);
-        for(  i=0; i<8; i++ )
+        var numHamBits=0;
+        switch (rawBits.length ) {
+        case 4:
+            numHamBits = 4+3;
+            break;
+        case 8:
+            numHamBits = 8+4;
+            break;
+        case 16:
+            numHamBits = 16+5;
+            break; 
+        case 24:
+            numHamBits = 24+5;
+            break; 
+        case 32:
+            numHamBits = 32+6;
+            break;
+        default:
+            console.log( "Need to implement playTone of " + rawBits.length + " bits" );
+            assert(0);
+            return;
+        }
+
+        rawBits.length
+
+        rawPtr = Module._malloc( rawBits.length * 4);
+        hamPtr = Module._malloc( numHamBits * 4);
+        for(  i=0; i< rawBits.length ; i++ )
         {
             Module.setValue( rawPtr + i*4, rawBits[i] , 'i32' ); 
-
         }
 
-        doHammingEncode( rawPtr,8, hamPtr,12 );
+        doHammingEncode( rawPtr,rawBits.length, hamPtr,numHamBits );
         
-        for(  i=0; i<12; i++ )
+        var hamBits = [];
+        for(  i=0; i<numHamBits; i++ )
         {
-             hamBits[i] = Module.getValue( hamPtr + i*4, 'i32' ); 
+            hamBits.push( Module.getValue( hamPtr + i*4, 'i32' ) ); 
         }
         Module._free( rawPtr );
         Module._free( hamPtr );
 
 
+        // TODO - move up and push on to hamBits
         var bitArray = [1,0,0,1]; // start bit sequence - must match pattern in dsp.cpp TODO
         bitArray = bitArray.concat( hamBits );
 
-       // console.log( "tx bits = " + bitArray );
+       console.log( "tx bits = " + bitArray );
 
         time += 0.015; // wait 5 ms to start 
 
-        for ( var repeat=0; repeat < 1; repeat++ )
+        for ( var repeat=0; repeat < 2; repeat++ ) // TODO - paramterize 
         {
             gain.gain.setValueAtTime( 0, time );
             for (var i = 0; i < bitArray.length; i++)
