@@ -5,9 +5,10 @@ Fluffy.SDR = function() // setup module
 {
     // private stuff
 
-    var symbolTime = 0.032; // 0.032;
-    var transitionTime = 0.008; // 0.008;
-    var frequency = 1100; // 1100
+    var symbolTime = 0.0032; // 0.032;
+    var transitionTime = 0.0008; // 0.008;
+    var frequency = 18000; // 1100
+    var squelchSNR = 25.0; // 25 
 
     var audioContext;
     var osc;
@@ -17,7 +18,7 @@ Fluffy.SDR = function() // setup module
 
     var audioBufferSize = 2048; // must be power of 2 
 
-    var bufSize = 8 * 48000 * 2.000; // 8 byte sammples * samplerate * time seconds  
+    var bufSize = 8 * 48000 * 0.500; // 8 byte sammples * samplerate * time seconds  
     var bufIn;
     var bufOut;
     var bufLoc = 0;
@@ -76,20 +77,47 @@ Fluffy.SDR = function() // setup module
                 
                 if ( bufLoc+8 >= bufSize )
                 {
-                    var e = doSoundProcess( audioContext.sampleRate, bufLoc/8, bufIn, 
-                                            symbolTime, transitionTime, frequency,
-                                            bufOut );
-                    bufLoc = 0;
+                    var foundSymMax = 1;
+                    var foundSyms = Module._malloc( 4 * foundSymMax );
 
+                    var e = doSoundProcess( audioContext.sampleRate, bufLoc/8, bufIn, 
+                                            symbolTime, transitionTime, frequency, squelchSNR,
+                                            bufOut, 
+                                            foundSyms, foundSymMax );
                     if ( e === 0 )
                     {
+                        var c =  Module.getValue( foundSyms + 0*4, 'i32' );
+                        var str = String.fromCharCode( c );
+
+                        console.log( "MAIN SDR Found sym[0] = " + c + " (" + str + ")" );
+                        
+                        receivedData( str );
+
                         draw( oldStartTime, oldTimeRange );
+
                         if ( privRunMode === "once" )
                         {
-                            console.log( "change runMode from once to stop" );
+                            //console.log( "change runMode from once to stop" );
                             privRunMode = "stop";
                         }
                     }
+
+                    if ( true ) // slide the last 75 ms of buffer to start and contiue copying
+                    {
+                        var slideLen = 0.075 * audioContext.sampleRate;
+                        for ( var j = 0; j<slideLen; j++ )
+                        {
+                            var v = Module.getValue(  bufLoc - j*8  ,  'double' );
+                        Module.setValue( bufIn + j*8 , v , 'double' ); bufLoc += 8;
+                        }
+                        bufLoc = slideLen*8;
+                    }
+                    else
+                    {
+                        bufLoc = 0; 
+                    }
+
+                    Module._free( foundSyms );
                 }
             }
         }
@@ -101,9 +129,13 @@ Fluffy.SDR = function() // setup module
         }
     }
 
-    doSoundProcess = Module.cwrap( 'soundProcess', 'number', ['number','number','buf','number','number','number','buf'] )
+    doSoundProcess = Module.cwrap( 'soundProcess', 'number', 
+                                   ['number','number','buf','number','number','number','number','buf','buf','number'] )
 
     
+    doHammingEncode = Module.cwrap( 'hammingEncode', 'number', 
+                                    ['buf','number','buf','number'] )
+
     // public stuff
 
 
@@ -113,6 +145,12 @@ Fluffy.SDR = function() // setup module
         oldTimeRange = timeRange;
 
         var canvas = document.getElementById('canvasWavform');
+
+        if ( !canvas )
+        {
+            return ;
+        }
+
         var drawContext = canvas.getContext('2d');
         drawContext.setTransform( 1, 0, 0, 1, 0, 0 );
         drawContext.clearRect( 0,0, drawContext.canvas.width, drawContext.canvas.height );
@@ -186,7 +224,11 @@ Fluffy.SDR = function() // setup module
         {
             alert('Browser does not support webAudio. Try Firefox or Chrome');
         }
+    };
 
+
+    var initTx = function()
+    {
         osc = audioContext.createOscillator();
         osc.frequency.value = frequency;
         osc.type = 'sine';
@@ -198,32 +240,83 @@ Fluffy.SDR = function() // setup module
         gain.connect( audioContext.destination );
         
         osc.start( 0 );
+    };  
 
+    var initRx = function()
+    {
         navigator.getUserMedia( {audio: true} , gumStream, gumError );
 
         bufIn  = Module._malloc( bufSize );
         bufOut = Module._malloc( bufSize );
-
     };
 
-
-    function playTones()
+    function playTones( data, freq )
     {
+        freq = freq || frequency;
+
+        if ( freq !== frequency )
+        {
+            frequency = freq;
+        }
+
         var time = audioContext.currentTime;
 
         gain.gain.setValueAtTime( 0, time );
+        osc.frequency.setValueAtTime( frequency, time );
         
         var prevPhase = 1
         var phase = 1
-        var volume = 0.5;
+        var volume = 0.8;
         
         // first bit is start bit and should be a 1 
-        var bitArray = "1001" + "00000000" + "1111";
-        for ( var count=0; count < 1; count++ )
+ 
+        var str = String( data );
+        var c = str.charCodeAt(0);
+
+        //console.log( "c=" + c );
+
+        var i=0;
+        var rawBits = [];
+        for(  i=0; i<8; i++ )
+        {
+            rawBits[i] = ( c & (1<<i) ) ? 1 : 0 ; 
+        }
+        var hamBits = [];
+        for(  i=0; i<12; i++ )
+        {
+            hamBits[i] = 0;
+        }
+
+        rawPtr = Module._malloc( 8 * 4);
+        hamPtr = Module._malloc( 12 * 4);
+        for(  i=0; i<8; i++ )
+        {
+            Module.setValue( rawPtr + i*4, rawBits[i] , 'i32' ); 
+
+        }
+
+        doHammingEncode( rawPtr,8, hamPtr,12 );
+        
+        for(  i=0; i<12; i++ )
+        {
+             hamBits[i] = Module.getValue( hamPtr + i*4, 'i32' ); 
+        }
+        Module._free( rawPtr );
+        Module._free( hamPtr );
+
+
+        var bitArray = [1,0,0,1]; // start bit sequence - must match pattern in dsp.cpp TODO
+        bitArray = bitArray.concat( hamBits );
+
+       // console.log( "tx bits = " + bitArray );
+
+        time += 0.015; // wait 5 ms to start 
+
+        for ( var repeat=0; repeat < 1; repeat++ )
         {
             gain.gain.setValueAtTime( 0, time );
-            for (var i = 0; i < bitArray.length; i++) {
-                //console.log( "bit=" + bitArray[i] );
+            for (var i = 0; i < bitArray.length; i++)
+            {
                 var bit = bitArray[i];
                 if ( bit == "0" ) {
                     phase = -phase ;
@@ -238,7 +331,7 @@ Fluffy.SDR = function() // setup module
                 time += symbolTime ;
             }
             gain.gain.linearRampToValueAtTime( 0.0, time );
-            time += 0.250;
+            time += 0.030; // repreat gap time time 
         }
     }
 
@@ -256,12 +349,13 @@ Fluffy.SDR = function() // setup module
             draw: draw,
             runMode: runMode,
             playTones: playTones,
+            initTx: initTx,
+            initRx: initRx,
             init: init
         };
 
     return publicExport;
 }();
 
-Fluffy.SDR.init();
 
 

@@ -14,4 +14,4 @@ testDsp: testDsp.cpp dsp.cpp dsp.h
 
 
 dsp.js: dsp.cpp
-	em++ -O1 dsp.cpp -o dsp.js -s EXPORTED_FUNCTIONS="['_soundProcess']"
+	em++ -O1 dsp.cpp -o dsp.js -s EXPORTED_FUNCTIONS="['_soundProcess','_hammingEncode','_hammingDecode']"
