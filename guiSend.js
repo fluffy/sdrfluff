@@ -24,6 +24,8 @@ function transmit()
 
     var val = $("#sendDataText").val(); 
 
+    //Fluffy.SDR.initTx();
+
     console.log("Transmit " + val + " at " + freq  );
     Fluffy.SDR.playTones( val, freq );
 }

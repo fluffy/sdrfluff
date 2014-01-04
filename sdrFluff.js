@@ -45,7 +45,7 @@ Fluffy.SDR = function() // setup module
     function hasGetUserMedia() 
     {
         return !!(navigator.getUserMedia
-                  || navigator.mozGetUserMedia
+                 // || navigator.mozGetUserMedia // TODO put back in when FF bug fixed 
                   || navigator.webkitGetUserMedia 
                   || navigator.msGetUserMedia);
     }
@@ -240,7 +240,7 @@ Fluffy.SDR = function() // setup module
         if ( hasGetUserMedia() ) 
         {
             navigator.getUserMedia  = navigator.getUserMedia 
-                || navigator.mozGetUserMedia 
+             //   || navigator.mozGetUserMedia // TODO - put back in wehn FF when bug fixed
                 || navigator.webkitGetUserMedia 
                 || navigator.msGetUserMedia ;
         } 
@@ -251,7 +251,7 @@ Fluffy.SDR = function() // setup module
 
         var contextClass = window.AudioContext 
                             || window.webkitAudioContext 
-                            || window.mozAudioContext 
+                          //  || window.mozAudioContext // TODO put back in when FF when bug fixed
                             || window.oAudioContext 
                             || window.msAudioContext ;
         if (contextClass) 
