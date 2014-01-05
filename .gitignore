@@ -14,14 +14,14 @@
 
 # editor crap
 *~
-old
-old?
+/old
+/old?
 
 # openssl credentails
-cert.pem
-privkey.pem
+/cert.pem
+/privkey.pem
 
 # generated files
-dsp.js
-testDsp
+/dsp.js
+/testDsp
 

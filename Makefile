@@ -44,5 +44,14 @@ lint:
 	jslint gui.js
 	jslint node-serv.js
 
+deploy:
+	cp send.html recv.html guiRecv.js  guiSend.js sdrFluff.js dsp.js ./static/. 
+
+restart:
+	sudo service apache2 reload
+
+
+
+
 
 
