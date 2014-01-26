@@ -1,57 +1,119 @@
 <!DOCTYPE html>
-<meta charset="UTF-8" >
+
 <html>
 <head>
-<title> SDR Fluff </title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="author" content="Cullen Jennings">
+  <title>SDR Fluff</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Cullen Jennings">
+  <link rel="stylesheet" href=
+  "https://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href=
+  "https://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap-theme.min.css">
+  <link rel="stylesheet" href=
+  "https://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+</head>
 
+
+<!--
 <link rel="stylesheet" href="static/bootstrap.css">
 <link rel="stylesheet" href="static/bootstrap-theme.css">
 <link rel="stylesheet" href="static/jquery-ui.css">
+-->
 
-
-</head>
 <body>
+  <div class="page-header">
+    <h1>SDR Fluff Stuff</h1>
+  </div>
+  <!-- page header -->
 
-<div class="page-header">
-  <h1>SDR Fluff Stuff</h1>
-</div> <!-- page header -->
 
-<div class="container">
-  <canvas id="canvasWavform"></canvas>
+  <div class="container">
+    <canvas id="canvasWavform"></canvas>
 
-  <div id="slider-range"></div>
-  
-</div> <!-- container -->
+    <div id="slider-range">
+    </div>
+  </div>
+  <!-- container -->
 
-<div class="container">
 
-<!-- Single button -->
-<div id="rxMenu" class="btn-group">
-  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-    RX <span class="caret"></span>
-  </button>
-  <ul class="dropdown-menu" role="menu">
-    <li><a href="#run">Run</a></li>
-    <li><a href="#once">Once</a></li>
-    <li><a href="#stop">Stop</a></li>
+  <div class="container">
+    <!-- Single button -->
 
-  </ul>
-</div>
 
-  <button id="buttonTX" type="button" class="btn btn-default"
-  data-toggle="button" onclick="txButtonClick()" >TX</button>
-  
-</div> <!-- container -->
+    <div id="rxMenu" class="btn-group">
+      <button type="button" class="btn btn-default dropdown-toggle"
+      data-toggle="dropdown">RX <span class="caret">&nbsp;</span></button>
 
+      <ul class="dropdown-menu" role="menu">
+        <li>
+          <a href="#run">Run</a>
+        </li>
+
+
+        <li>
+          <a href="#once">Once</a>
+        </li>
+
+
+        <li>
+          <a href="#stop">Stop</a>
+        </li>
+      </ul>
+    </div>
+
+
+    <div>
+      <button id="buttonTX" type="button" class="btn btn-default" data-toggle=
+      "button" onclick="txButtonClick()">TX</button>
+    </div>
+  </div>
+  <!-- container -->
+
+
+  <div class="container">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title">Received Data:</h3>
+      </div>
+
+
+<!--
 <script src="static/jquery-1.9.1.js"></script>
 <script src="static/jquery-ui.js"></script>
 <script src="static/bootstrap.js"></script>
+-->
+      
+      <div class="panel-body">
+        <textarea id="recvDataText" class="form-control" rows="5">
+</textarea>
+      </div>
+    </div>
 
-<script src="dsp.js"></script>
-<script src="sdrFluff.js"></script>
-<script src="gui.js"></script>
 
+    <div class="input-group">
+      <span class="input-group-addon">Send:</span> <input id="sendDataText"
+      type="text" class="form-control" placeholder="sendData">
+    </div>
+  </div>
+  <!-- container -->
+
+  <script src="https://code.jquery.com/jquery-1.9.1.js">
+</script>
+
+  <script src="https://code.jquery.com/ui/1.10.3/jquery-ui.js">
+</script>
+
+  <script src="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js">
+</script>
+
+  <script src="dsp.js">
+</script>
+
+  <script src="sdrFluff.js">
+</script>
+
+  <script src="gui.js">
+</script>
 </body>
 </html>
