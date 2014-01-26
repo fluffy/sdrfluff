@@ -16,13 +16,16 @@
 *~
 old
 old-psk
-
+/old
+/old?
 
 # openssl credentails
-cert.pem
-privkey.pem
+/cert.pem
+/privkey.pem
 
 # generated files
 dsp.js
 testDsp
 newlib
+
+apache.conf
