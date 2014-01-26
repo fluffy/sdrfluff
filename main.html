@@ -50,8 +50,42 @@
 <script src="static/bootstrap.js"></script>
 
 <script src="dsp.js"></script>
-<script src="sdrFluff.js"></script>
+<!-- script src="sdrFluff.js"></script -->
 <script src="gui.js"></script>
+
+
+<div id="listener">
+
+<script type="text/javascript">
+
+function naclMessageHandle( e ){
+  console.log('OK nacl got message: ' + e.data );
+}
+  
+function moduleDidLoad() {
+  console.log('OK loaded NaCL module');
+  
+  var testNacllModule = document.getElementById('testNacl');
+  testNacllModule.addEventListener('message', naclMessageHandle, false);
+  
+  testNacllModule.postMessage('hello');
+}
+
+var listener = document.getElementById('listener');
+listener.addEventListener('load', moduleDidLoad, true);
+//listener.addEventListener('message', handleMessage, true);
+
+</script>
+
+  <embed name="naclModule"
+       id="testNacl"
+       width=0 height=0
+       src="newlib/Release/testNacl.nmf"
+       type="application/x-nacl" />
+
+
+</div>
+
 
 </body>
 </html>
