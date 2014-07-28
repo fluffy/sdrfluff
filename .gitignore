@@ -24,7 +24,6 @@ old-psk
 /privkey.pem
 
 # generated files
-dsp.js
 testDsp
 newlib
 
